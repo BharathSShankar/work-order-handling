@@ -9,7 +9,7 @@ def test_work_order_system():
     work_order_data = {
         "viewers": ["user1"],
         "changers": ["user2"],
-        "details": {"description": "Fix the AC"}
+        "details": json.dumps({"description": "Fix the AC"})  # Ensure details are serialized correctly
     }
     
     create_response = requests.post(create_work_order_url, json=work_order_data)
@@ -59,6 +59,35 @@ def test_work_order_system():
         print(f"Failed to fetch changeable work orders. Status code: {changeable_response.status_code}")
         return
 
+    # 5. Test average time stats
+    average_time_stats_url = f"{BASE_URL}/stats/average_time"
+    average_time_stats_response = requests.get(average_time_stats_url)
+
+    if average_time_stats_response.status_code == 200:
+        average_time_stats = average_time_stats_response.json()
+        print("Average time stats:", average_time_stats)
+    else:
+        print(f"Failed to fetch average time stats. Status code: {average_time_stats_response.status_code}")
+
+    # 6. Test user-specific stats
+    user_stats_url = f"{BASE_URL}/stats/user_stats/user2"
+    user_stats_response = requests.get(user_stats_url)
+
+    if user_stats_response.status_code == 200:
+        user_stats = user_stats_response.json()
+        print("User-specific stats for user2:", user_stats)
+    else:
+        print(f"Failed to fetch user-specific stats. Status code: {user_stats_response.status_code}")
+
+    # 7. Test attribute-based stats
+    attribute_stats_url = f"{BASE_URL}/stats/attribute_stats?attribute_key=description&attribute_value=Fix the AC"
+    attribute_stats_response = requests.get(attribute_stats_url)
+
+    if attribute_stats_response.status_code == 200:
+        attribute_stats = attribute_stats_response.json()
+        print("Attribute-based stats:", attribute_stats)
+    else:
+        print(f"Failed to fetch attribute-based stats. Status code: {attribute_stats_response.status_code}")
 
 if __name__ == "__main__":
     test_work_order_system()

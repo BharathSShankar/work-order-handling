@@ -1,5 +1,6 @@
 from quart import Quart, jsonify, request, abort
 from sqlalchemy.future import select
+from sqlalchemy import func, text
 import uuid
 from database import get_db, engine, Base
 from models import WorkOrder, WorkOrderActionLog, StateTransition
@@ -96,6 +97,60 @@ async def get_changeable_work_orders(user_id):
             return jsonify([wo.as_dict() for wo in work_orders]), 200
     except Exception as e:
         abort(500, description=str(e))
+
+@app.route("/stats/average_time", methods=["GET"])
+async def get_average_time_stats():
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            select(
+                WorkOrderActionLog.action,
+                func.avg(WorkOrderActionLog.time_taken).label('average_time')
+            ).group_by(WorkOrderActionLog.action)
+        )
+        data = result.fetchall()
+        stats = {row.action: row.average_time for row in data}
+        return jsonify(stats)
+    
+@app.route("/stats/user_stats/<user_id>", methods=["GET"])
+async def get_user_stats(user_id):
+    async with engine.connect() as conn:
+        result = await conn.execute(
+            select(
+                WorkOrderActionLog.action,
+                func.count(WorkOrderActionLog.id).label('count'),
+                func.avg(WorkOrderActionLog.time_taken).label('average_time')
+            ).where(WorkOrderActionLog.performed_by == user_id)
+             .group_by(WorkOrderActionLog.action)
+        )
+        data = result.fetchall()
+        stats = {row.action: {'count': row.count, 'average_time': row.average_time} for row in data}
+        return jsonify(stats)
+    
+
+@app.route("/stats/attribute_stats", methods=["GET"])
+async def get_attribute_stats():
+    attribute_key = request.args.get('attribute_key')
+    attribute_value = request.args.get('attribute_value')  # Assuming you're looking for a specific value
+
+    async with get_db() as db:
+        # Adjusting for SQLite
+        json_query = f"json_extract(work_orders.details, '$.{attribute_key}') = :attribute_value"
+
+        # Using explicit join with select_from and on clause
+        result = await db.execute(
+            select(
+                WorkOrderActionLog.action,
+                func.avg(WorkOrderActionLog.time_taken).label('average_time')
+            ).select_from(WorkOrderActionLog)
+             .join(WorkOrder, WorkOrderActionLog.work_order_id == WorkOrder.id)  # Explicit join condition
+             .where(text(json_query))
+             .group_by(WorkOrderActionLog.action),
+            {"attribute_value": attribute_value}  # Passing the attribute_value here
+        )
+
+        data = result.fetchall()
+        stats = {row.action: float(row.average_time) for row in data}
+        return jsonify(stats)
 
 if __name__ == "__main__":
     app.run()
