@@ -2,7 +2,7 @@ import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, Text
+from sqlalchemy import Column, String, Text, Integer, Float
 
 # Database URL (using SQLite, compatible with LibSQL)
 DATABASE_URL = "sqlite+aiosqlite:///./my_database.db"
@@ -25,6 +25,7 @@ class WorkOrder(Base):
     viewers = Column(Text)
     changers = Column(Text)
     details = Column(Text)
+    step_count = Column(Integer)
 
 # Define the WorkOrderActionLog model
 class WorkOrderActionLog(Base):
@@ -36,7 +37,8 @@ class WorkOrderActionLog(Base):
     action = Column(String)
     performed_by = Column(String)
     time_taken = Column(String)
-    timestamp = Column(Text)
+    timestamp = Column(Float)
+    step_count = Column(Integer)
 
 # Define the StateTransition model
 class StateTransition(Base):
